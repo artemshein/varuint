@@ -1,0 +1,4 @@
+[package]
+name = "varuint"
+version = "0.1.0"
+authors = ["Artem Shein <sc-github@aisys.ru>"]
