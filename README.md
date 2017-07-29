@@ -14,7 +14,7 @@ See [crate docs](https://docs.rs/varuint) for more details.
 Add dependency to `Cargo.toml`:
 ```cargo
 [dependencies]
-varuint = "0.2"
+varuint = "0.3"
 ```
 
 Update you project:
@@ -23,8 +23,8 @@ extern crate varuint;
 
 use std::mem;
 
-use varuint::{Varuint, VarType};
-use std::io::Read;
+use varuint::{Varuint, Serializable, Deserializable};
+use std::io::{Read, Write};
 
 
 fn test_varuint(v: u64, size: usize) {
@@ -33,11 +33,11 @@ fn test_varuint(v: u64, size: usize) {
     let mut arr: [u8; 9] = unsafe { mem::uninitialized() };
     {
         let mut buf = &mut arr as &mut [u8];
-        assert_eq!(size, v.write(&mut buf).unwrap());
+        assert_eq!(size, v.serialize(&mut buf).unwrap());
     }
     let mut buf: &[u8] = &arr;
     let mut read: &mut Read = &mut buf;
-    assert_eq!(v, Varuint::read(read).unwrap());
+    assert_eq!(v, Varuint::deserialize(read).unwrap());
 }
 
 fn main() {
