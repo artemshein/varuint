@@ -2,3 +2,8 @@
 name = "varuint"
 version = "0.1.0"
 authors = ["Artem Shein <sc-github@aisys.ru>"]
+
+description = "Variable length signed and unsigned integer types"
+repository = "https://github.com/artemshein/varuint"
+categories = ["data-structures"]
+license = "MIT"
