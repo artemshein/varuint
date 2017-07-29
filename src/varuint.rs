@@ -91,6 +91,18 @@ impl DerefMut for Varuint {
     }
 }
 
+impl From<u64> for Varuint {
+    fn from(v: u64) -> Self {
+        Varuint(v)
+    }
+}
+
+impl Default for Varuint {
+    fn default() -> Self {
+        Varuint(0)
+    }
+}
+
 impl Varuint {
     fn serialize_buf(&self, mut buf: &mut [u8]) -> usize {
         let size = self.size_hint();
@@ -305,6 +317,18 @@ impl Deref for Varint {
 impl DerefMut for Varint {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+impl From<i64> for Varint {
+    fn from(v: i64) -> Self {
+        Varint(v)
+    }
+}
+
+impl Default for Varint {
+    fn default() -> Self {
+        Varint(0)
     }
 }
 
