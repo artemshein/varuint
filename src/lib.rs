@@ -17,4 +17,4 @@
 */
 mod varuint;
 
-pub use varuint::{Varuint, VarType, Varint};
+pub use varuint::{Serializable, Deserializable, Varuint, Varint};
