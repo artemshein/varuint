@@ -3,67 +3,78 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::fmt;
 
-/// Variable length signed and unsigned integer types.
-/// Types support up to 64-bit integers (128-bit integers support will be added when Rust has the
-/// i128 and u128 types).
-///
-/// See [`Varuint`] and [`Varint`] for more details.
-///
+/**
 
+VarType trait defines the common part of `Varint` and `Varuint` types.
+
+*/
 pub trait VarType {
+    /// Get a hint of encoded value byte-length
     fn size_hint(&self) -> usize;
+
+    /// Encode variable-length type and write it with a `Write` instance
     fn write(&self, w: &mut Write) -> Result<usize>;
+
+    /// Encode variable-length type and write it into a `&mut [u8]`
+    /// Slice must have enough space in it, use `size_hint` to find out the space needed to encode
     fn write_buf(&self, buf: &mut [u8]) -> usize;
 }
 
-/// Variable length unsigned integer.
-///
-/// ```
-/// use std::mem;
-///
-/// use varuint::{Varuint, VarType};
-/// use std::io::Read;
-///
-///
-/// fn test_varuint(v: u64, size: usize) {
-///     let v = Varuint(v);
-///     let mut arr: [u8; 9] = unsafe { mem::uninitialized() };
-///     {
-///         let mut buf = &mut arr as &mut [u8];
-///         assert_eq!(size, v.write(&mut buf).unwrap());
-///     }
-///     let mut buf: &[u8] = &arr;
-///     let mut read: &mut Read = &mut buf;
-///     assert_eq!(v, Varuint::read(read).unwrap());
-/// }
-///
-/// test_varuint(0, 1);
-/// test_varuint(240, 1);
-///
-/// test_varuint(241, 2);
-/// test_varuint(2031, 2);
-///
-/// test_varuint(2032, 3);
-/// test_varuint(67567, 3);
-///
-/// test_varuint(67568, 4);
-/// test_varuint(16777215, 4);
-///
-/// test_varuint(16777216, 5);
-/// test_varuint(4294967295, 5);
-///
-/// test_varuint(4294967296, 6);
-/// test_varuint(1099511627775, 6);
-///
-/// test_varuint(1099511627776, 7);
-/// test_varuint(281474976710655, 7);
-///
-/// test_varuint(281474976710656, 8);
-/// test_varuint(72057594037927935, 8);
-///
-/// test_varuint(72057594037927936, 9);
-/// test_varuint(u64::max_value(), 9);
-/// ```
+/**
+
+Variable length unsigned integer.
+
+# Examples
+
+```rust
+use std::mem;
+
+use varuint::{Varuint, VarType};
+use std::io::Read;
+
+
+fn test_varuint(v: u64, size: usize) {
+ let v = Varuint(v);
+ assert_eq!(size, v.size_hint());
+ let mut arr: [u8; 9] = unsafe { mem::uninitialized() };
+ {
+     let mut buf = &mut arr as &mut [u8];
+     assert_eq!(size, v.write(&mut buf).unwrap());
+ }
+ let mut buf: &[u8] = &arr;
+ let mut read: &mut Read = &mut buf;
+ assert_eq!(v, Varuint::read(read).unwrap());
+}
+
+test_varuint(0, 1);
+test_varuint(240, 1);
+
+test_varuint(241, 2);
+test_varuint(2031, 2);
+
+test_varuint(2032, 3);
+test_varuint(67567, 3);
+
+test_varuint(67568, 4);
+test_varuint(16777215, 4);
+
+test_varuint(16777216, 5);
+test_varuint(4294967295, 5);
+
+test_varuint(4294967296, 6);
+test_varuint(1099511627775, 6);
+
+test_varuint(1099511627776, 7);
+test_varuint(281474976710655, 7);
+
+test_varuint(281474976710656, 8);
+test_varuint(72057594037927935, 8);
+
+test_varuint(72057594037927936, 9);
+test_varuint(u64::max_value(), 9);
+```
+
+*/
 #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
 pub struct Varuint(pub u64);
 
@@ -223,58 +234,65 @@ impl VarType for Varuint {
 
 }
 
-/// Variable length signed integer.
-///
-/// ```
-/// use std::mem;
-///
-/// use varuint::{Varint, VarType};
-/// use std::io::Read;
-///
-///
-/// fn test_varint(v: i64, size: usize) {
-///     let v = Varint(v);
-///     let mut arr: [u8; 9] = unsafe { mem::uninitialized() };
-///     {
-///         let mut buf = &mut arr as &mut [u8];
-///         assert_eq!(size, v.write(&mut buf).unwrap());
-///     }
-///     let mut buf: &[u8] = &arr;
-///     let mut read: &mut Read = &mut buf;
-///     assert_eq!(v, Varint::read(read).unwrap());
-/// }
-///
-/// test_varint(0, 1);
-/// test_varint(1, 1);
-/// test_varint(-1, 1);
-///
-/// test_varint(-120, 1);
-/// test_varint(120, 1);
-///
-/// test_varint(-2031/2, 2);
-/// test_varint(2031/2, 2);
-///
-/// test_varint(-67567/2, 3);
-/// test_varint(67567/2, 3);
-///
-/// test_varint(-16777215/2, 4);
-/// test_varint(16777215/2, 4);
-///
-/// test_varint(-4294967295/2, 5);
-/// test_varint(4294967295/2, 5);
-///
-/// test_varint(-1099511627775/2, 6);
-/// test_varint(1099511627775/2, 6);
-///
-/// test_varint(-281474976710655/2, 7);
-/// test_varint(281474976710655/2, 7);
-///
-/// test_varint(-72057594037927935/2, 8);
-/// test_varint(72057594037927935/2, 8);
-///
-/// test_varint(i64::min_value(), 9);
-/// test_varint(i64::max_value(), 9);
-/// ```
+/**
+
+Variable length signed integer.
+
+# Examples
+
+```rust
+use std::mem;
+
+use varuint::{Varint, VarType};
+use std::io::Read;
+
+
+fn test_varint(v: i64, size: usize) {
+    let v = Varint(v);
+    assert_eq!(size, v.size_hint());
+    let mut arr: [u8; 9] = unsafe { mem::uninitialized() };
+    {
+        let mut buf = &mut arr as &mut [u8];
+        assert_eq!(size, v.write(&mut buf).unwrap());
+    }
+    let mut buf: &[u8] = &arr;
+    let mut read: &mut Read = &mut buf;
+    assert_eq!(v, Varint::read(read).unwrap());
+}
+
+test_varint(0, 1);
+test_varint(1, 1);
+test_varint(-1, 1);
+
+test_varint(-120, 1);
+test_varint(120, 1);
+
+test_varint(-2031/2, 2);
+test_varint(2031/2, 2);
+
+test_varint(-67567/2, 3);
+test_varint(67567/2, 3);
+
+test_varint(-16777215/2, 4);
+test_varint(16777215/2, 4);
+
+test_varint(-4294967295/2, 5);
+test_varint(4294967295/2, 5);
+
+test_varint(-1099511627775/2, 6);
+test_varint(1099511627775/2, 6);
+
+test_varint(-281474976710655/2, 7);
+test_varint(281474976710655/2, 7);
+
+test_varint(-72057594037927935/2, 8);
+test_varint(72057594037927935/2, 8);
+
+test_varint(i64::min_value(), 9);
+test_varint(i64::max_value(), 9);
+```
+
+*/
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy, Clone)]
 pub struct Varint(pub i64);
 
