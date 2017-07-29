@@ -5,7 +5,7 @@ Varint is encoded using the [Protobuf ZigZag approach](https://developers.google
 
 Unlike the Protobuf encoding rules Varuint needs the first byte only to find out the length of the whole value. Microbenchmarks say that it is a lot faster.
 
-See Varuint and Varint for more details.
+See [crate docs](https://docs.rs/varuint) for more details.
 
 # How to use
 
