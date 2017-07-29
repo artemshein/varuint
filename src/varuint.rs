@@ -248,6 +248,7 @@ use std::io::Read;
 
 
 fn test_varint(v: i64, size: usize) {
+    println!("{}", v);
     let v = Varint(v);
     assert_eq!(size, v.size_hint());
     let mut arr: [u8; 9] = unsafe { mem::uninitialized() };
@@ -323,9 +324,7 @@ fn varint_to_varuint(v: i64) -> u64 {
 
 #[inline]
 fn varuint_to_varint(v: u64) -> i64 {
-    let sign_shifted = (v & 1) as i64;
-    let val_shifted = v ^ (((sign_shifted << 63) >> 63) as u64);
-    ((val_shifted >> 1) ^ ((sign_shifted << 63) as u64)) as i64
+    ((v >> 1) as i64) ^ -((v & 1) as i64)
 }
 
 impl VarType for Varint {
