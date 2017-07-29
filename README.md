@@ -14,7 +14,7 @@ See [crate docs](https://docs.rs/varuint) for more details.
 Add dependency to `Cargo.toml`:
 ```cargo
 [dependencies]
-varuint = "0.1"
+varuint = "0.2"
 ```
 
 Update you project:
