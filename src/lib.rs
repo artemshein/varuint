@@ -21,18 +21,18 @@
 //!
 //! Add imports to your code:
 //!
-//! ```rust
-//! extern crate varuint;
+//! ```rust,no_run
 //!
 //! use varuint::{Varint, Varuint, Serializable, Deserializable};
 //! ```
 //!
 //! Use it:
 //!
-//! ```rust
+//! ```rust,no_run
 //! use std::mem;
 //! use std::io::Read;
 //!
+//! use varuint::*;
 //!
 //! fn test_varint(v: i64, size: usize) {
 //!     let v = Varint(v);
