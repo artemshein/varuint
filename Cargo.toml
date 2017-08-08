@@ -1,9 +1,15 @@
 [package]
 name = "varuint"
-version = "0.3.2"
+version = "0.3.3"
 authors = ["Artem Shein <sc-github@aisys.ru>"]
 
 description = "Variable length signed and unsigned integer types"
 repository = "https://github.com/artemshein/varuint"
 categories = ["data-structures", "encoding", "compression"]
 license = "MIT"
+
+[features]
+serde-support = ["serde"]
+
+[dependencies]
+serde = { version = "1", optional = true }

@@ -69,6 +69,7 @@ pub trait Deserializable : Sized {
 /// test_varuint(u64::max_value(), 9);
 /// ```
 #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
+#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct Varuint(pub u64);
 
 impl fmt::Display for Varuint {
@@ -298,6 +299,7 @@ impl Serializable for Varuint {
 /// test_varint(i64::max_value(), 9);
 /// ```
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy, Clone)]
+#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct Varint(pub i64);
 
 impl fmt::Display for Varint {

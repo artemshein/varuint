@@ -75,4 +75,8 @@
 //! for details.
 mod varuint;
 
+#[cfg_attr(feature = "serde-support")]
+#[macro_use]
+extern crate serde;
+
 pub use varuint::{Serializable, Deserializable, Varuint, Varint};
