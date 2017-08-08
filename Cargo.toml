@@ -9,7 +9,9 @@ categories = ["data-structures", "encoding", "compression"]
 license = "MIT"
 
 [features]
-serde-support = ["serde"]
+default = []
+serde-support = ["serde", "serde_derive"]
 
 [dependencies]
+serde_derive = { version = "1", optional = true }
 serde = { version = "1", optional = true }
