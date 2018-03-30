@@ -98,6 +98,12 @@ impl From<u64> for Varuint {
     }
 }
 
+impl From<usize> for Varuint {
+    fn from(v: usize) -> Self {
+        Varuint(v as u64)
+    }
+}
+
 impl Default for Varuint {
     fn default() -> Self {
         Varuint(0)
@@ -319,6 +325,12 @@ impl Deref for Varint {
 impl DerefMut for Varint {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+impl From<i32> for Varint {
+    fn from(i: i32) -> Self {
+        Varint(i as i64)
     }
 }
 
