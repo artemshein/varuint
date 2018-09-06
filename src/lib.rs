@@ -1,9 +1,8 @@
 //! Variable length signed and unsigned integer types.
-//! Types support up to 64-bit integers and encoded to 1-9 bytes (128-bit integers support will be
-//! added when Rust has the `i128` and `u128` types, this types will be encoded as 17 bytes).
+//! Types support up to 128-bit integers and encoded to 1-17 bytes.
 //!
 //! Encoding rules are based on [SQLite 4 Varuint type](https://!sqlite.org/src4/doc/trunk/www/varint.wiki)
-//! with modifications for future support of 128-bit long integers.
+//! with modifications for support of 128-bit long integers.
 //! Varint is encoded using the [Protobuf ZigZag approach](https://!developers.google.com/protocol-buffers/docs/encoding#signed-integers)
 //! and reuses `Varuint` as a storage.
 //!
@@ -16,7 +15,7 @@
 //!
 //! ```cargo
 //! [dependencies]
-//! varuint = "0.3"
+//! varuint = "0.4"
 //! ```
 //!
 //! Add imports to your code:
@@ -34,10 +33,10 @@
 //!
 //! use varuint::*;
 //!
-//! fn test_varint(v: i64, size: usize) {
+//! fn test_varint(v: i128, size: usize) {
 //!     let v = Varint(v);
 //!     assert_eq!(size, v.size_hint());
-//!     let mut arr: [u8; 9] = unsafe { mem::uninitialized() };
+//!     let mut arr: [u8; 17] = unsafe { mem::uninitialized() };
 //!     {
 //!         let mut buf = &mut arr as &mut [u8];
 //!         assert_eq!(size, v.serialize(&mut buf).unwrap());
@@ -67,9 +66,9 @@
 //!   * If `V<=281474976710655` then output `A0` as `252` and `A1..A6` as a big-ending 6-byte integer.
 //!   * If `V<=72057594037927935` then output `A0` as `253` and `A1..A7` as a big-ending 7-byte integer.
 //!   * If `V<=9223372036854775807` then output `A0` as `254` and `A1..A8` as a big-ending 8-byte integer.
-//!   * (not supported yet) Otherwise output `A0` as `255` and `A1..A16` as a big-endian 16-byte integer.
+//!   * Otherwise output `A0` as `255` and `A1..A16` as a big-endian 16-byte integer.
 //!
-//! `Varint` converted to the `Varuint` in the first place and then encoded as unsigned integer.
+//! `Varint` converted to the `Varuint` in the first place and then encoded as an unsigned integer.
 //! Conversion method makes values closer to 0 take less space.
 //! See [Protobuf docs](https://!developers.google.com/protocol-buffers/docs/encoding#signed-integers)
 //! for details.

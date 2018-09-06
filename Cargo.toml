@@ -1,6 +1,6 @@
 [package]
 name = "varuint"
-version = "0.3.4"
+version = "0.4.0"
 authors = ["Artem Shein <sc-github@aisys.ru>"]
 
 description = "Variable length signed and unsigned integer types"
@@ -15,3 +15,10 @@ serde-support = ["serde", "serde_derive"]
 [dependencies]
 serde_derive = { version = "1", optional = true }
 serde = { version = "1", optional = true }
+
+[dev-dependencies]
+criterion = "0.2"
+
+[[bench]]
+name = "benchmark"
+harness = false

@@ -1,4 +1,4 @@
-use std::io::{self, Read, Write, Result};
+use std::io::{Read, Write, Result};
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::fmt;
@@ -28,10 +28,10 @@ pub trait Deserializable : Sized {
 /// use std::io::Read;
 /// 
 /// 
-/// fn test_varuint(v: u64, size: usize) {
+/// fn test_varuint(v: u128, size: usize) {
 ///  let v = Varuint(v);
 ///  assert_eq!(size, v.size_hint());
-///  let mut arr: [u8; 9] = unsafe { mem::uninitialized() };
+///  let mut arr: [u8; 17] = unsafe { mem::uninitialized() };
 ///  {
 ///      let mut buf = &mut arr as &mut [u8];
 ///      assert_eq!(size, v.serialize(&mut buf).unwrap());
@@ -66,52 +66,82 @@ pub trait Deserializable : Sized {
 /// test_varuint(72057594037927935, 8);
 /// 
 /// test_varuint(72057594037927936, 9);
-/// test_varuint(u64::max_value(), 9);
+/// test_varuint(u64::max_value().into(), 9);
+///
+/// test_varuint(u64::max_value() as u128 + 1, 17);
+/// test_varuint(u128::max_value(), 17);
 /// ```
 #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
-pub struct Varuint(pub u64);
+pub struct Varuint(pub u128);
 
 impl fmt::Display for Varuint {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
 
 impl Deref for Varuint {
-    type Target = u64;
+    type Target = u128;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
 impl DerefMut for Varuint {
+    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
+impl From<u8> for Varuint {
+    #[inline]
+    fn from(v: u8) -> Self {
+        Varuint(v as u128)
+    }
+}
+
+impl From<u16> for Varuint {
+    #[inline]
+    fn from(v: u16) -> Self {
+        Varuint(v as u128)
+    }
+}
+
+impl From<u32> for Varuint {
+    #[inline]
+    fn from(v: u32) -> Self {
+        Varuint(v as u128)
+    }
+}
+
 impl From<u64> for Varuint {
+    #[inline]
     fn from(v: u64) -> Self {
+        Varuint(v as u128)
+    }
+}
+
+impl From<u128> for Varuint {
+    #[inline]
+    fn from(v: u128) -> Self {
         Varuint(v)
     }
 }
 
-impl From<usize> for Varuint {
-    fn from(v: usize) -> Self {
-        Varuint(v as u64)
-    }
-}
-
 impl Default for Varuint {
+    #[inline]
     fn default() -> Self {
-        Varuint(0)
+        Varuint(0u128)
     }
 }
 
 impl Varuint {
-    fn serialize_buf(&self, mut buf: &mut [u8]) -> usize {
+    fn serialize_buf(&self, buf: &mut [u8]) -> usize {
         let size = self.size_hint();
         let v = self.0;
         match size {
@@ -176,6 +206,25 @@ impl Varuint {
                 buf[7] = (v >> 8) as u8;
                 buf[8] = v as u8;
             }
+            17 => {
+                buf[0]  = 255;
+                buf[1]  = (v >> (8 * 15)) as u8;
+                buf[2]  = (v >> (8 * 14)) as u8;
+                buf[3]  = (v >> (8 * 13)) as u8;
+                buf[4]  = (v >> (8 * 12)) as u8;
+                buf[5]  = (v >> (8 * 11)) as u8;
+                buf[6]  = (v >> (8 * 10)) as u8;
+                buf[7]  = (v >> (8 * 9)) as u8;
+                buf[8]  = (v >> (8 * 8)) as u8;
+                buf[9]  = (v >> (8 * 7)) as u8;
+                buf[10] = (v >> (8 * 6)) as u8;
+                buf[11] = (v >> (8 * 5)) as u8;
+                buf[12] = (v >> (8 * 4)) as u8;
+                buf[13] = (v >> (8 * 3)) as u8;
+                buf[14] = (v >> (8 * 2)) as u8;
+                buf[15] = (v >> (8 * 1)) as u8;
+                buf[16] = v as u8;
+            }
             _ => unreachable!()
         };
         size
@@ -184,11 +233,11 @@ impl Varuint {
 
 impl Deserializable for Varuint {
 
-    fn deserialize(mut r: &mut Read) -> Result<Varuint> {
-        let mut buf: [u8; 9] = unsafe { mem::uninitialized() };
+    fn deserialize(r: &mut Read) -> Result<Varuint> {
+        let mut buf: [u8; 17] = unsafe { mem::uninitialized() };
         r.read_exact(&mut buf[0..1])?;
         let length = match buf[0] {
-            v @ 0...240 => return Ok(Varuint(v as u64)),
+            v @ 0...240 => return Ok(Varuint(v as u128)),
             241...247 => 2,
             248 => 3,
             249 => 4,
@@ -197,19 +246,62 @@ impl Deserializable for Varuint {
             252 => 7,
             253 => 8,
             254 => 9,
-            255 => return Err(io::ErrorKind::InvalidData.into()), // not supported yet
+            255 => 17,
             _ => unreachable!()
         };
         r.read_exact(&mut buf[1..length])?;
         Ok(Varuint(match length {
-            2 => 240u64 + 256u64 * (buf[0] as u64 - 241u64) + buf[1] as u64,
-            3 => 2032u64 + 256u64 * buf[1] as u64 + buf[2] as u64,
-            4 => ((buf[1] as u64) << 16) | ((buf[2] as u64) << 8) | buf[3] as u64,
-            5 => ((buf[1] as u64) << 24) | ((buf[2] as u64) << 16) | ((buf[3] as u64) << 8) | buf[4] as u64,
-            6 => ((buf[1] as u64) << 32) | ((buf[2] as u64) << 24) | ((buf[3] as u64) << 16) | ((buf[4] as u64) << 8) | buf[5] as u64,
-            7 => ((buf[1] as u64) << 40) | ((buf[2] as u64) << 32) | ((buf[3] as u64) << 24) | ((buf[4] as u64) << 16) | ((buf[5] as u64) << 8) | buf[6] as u64,
-            8 => ((buf[1] as u64) << 48) | ((buf[2] as u64) << 40) | ((buf[3] as u64) << 32) | ((buf[4] as u64) << 24) | ((buf[5] as u64) << 16) | ((buf[6] as u64) << 8) | buf[7] as u64,
-            9 => ((buf[1] as u64) << 56) | ((buf[2] as u64) << 48) | ((buf[3] as u64) << 40) | ((buf[4] as u64) << 32) | ((buf[5] as u64) << 24) | ((buf[6] as u64) << 16) | ((buf[7] as u64) << 8) | buf[8] as u64,
+            2 => 240u128 + 256u128 * (buf[0] as u128 - 241u128) + buf[1] as u128,
+            3 => 2032u128 + 256u128 * buf[1] as u128 + buf[2] as u128,
+            4 => ((buf[1] as u128) << 16)
+                | ((buf[2] as u128) << 8)
+                | buf[3] as u128,
+            5 => ((buf[1] as u128) << 24)
+                | ((buf[2] as u128) << 16)
+                | ((buf[3] as u128) << 8)
+                | buf[4] as u128,
+            6 => ((buf[1] as u128) << 32)
+                | ((buf[2] as u128) << 24)
+                | ((buf[3] as u128) << 16)
+                | ((buf[4] as u128) << 8)
+                | buf[5] as u128,
+            7 => ((buf[1] as u128) << 40)
+                | ((buf[2] as u128) << 32)
+                | ((buf[3] as u128) << 24)
+                | ((buf[4] as u128) << 16)
+                | ((buf[5] as u128) << 8)
+                | buf[6] as u128,
+            8 => ((buf[1] as u128) << 48)
+                | ((buf[2] as u128) << 40)
+                | ((buf[3] as u128) << 32)
+                | ((buf[4] as u128) << 24)
+                | ((buf[5] as u128) << 16)
+                | ((buf[6] as u128) << 8)
+                | buf[7] as u128,
+            9 => ((buf[1] as u128) << 56)
+                | ((buf[2] as u128) << 48)
+                | ((buf[3] as u128) << 40)
+                | ((buf[4] as u128) << 32)
+                | ((buf[5] as u128) << 24)
+                | ((buf[6] as u128) << 16)
+                | ((buf[7] as u128) << 8)
+                | buf[8] as u128,
+            17 => ((buf[1] as u128) << (8 * 15))
+                | ((buf[2] as u128) << (8 * 14))
+                | ((buf[3] as u128) << (8 * 13))
+                | ((buf[4] as u128) << (8 * 12))
+                | ((buf[5] as u128) << (8 * 11))
+                | ((buf[6] as u128) << (8 * 10))
+                | ((buf[7] as u128) << (8 * 9))
+                | ((buf[8] as u128) << (8 * 8))
+                | ((buf[9] as u128) << (8 * 7))
+                | ((buf[10] as u128) << (8 * 6))
+                | ((buf[11] as u128) << (8 * 5))
+                | ((buf[12] as u128) << (8 * 4))
+                | ((buf[13] as u128) << (8 * 3))
+                | ((buf[14] as u128) << (8 * 2))
+                | ((buf[15] as u128) << (8 * 1))
+                |   buf[16] as u128,
             _ => unreachable!()
         }))
     }
@@ -235,14 +327,15 @@ impl Serializable for Varuint {
             7
         } else if v <= 72057594037927935 {
             8
-        } else {
+        } else if v <= 18446744073709551615 {
             9
+        } else {
+            17
         }
-        // u128 is not supported yet
     }
 
     fn serialize(&self, w: &mut Write) -> Result<usize> {
-        let mut buf: [u8; 9] = unsafe { mem::uninitialized() };
+        let mut buf: [u8; 17] = unsafe { mem::uninitialized() };
         let size = self.serialize_buf(&mut buf as &mut [u8]);
         w.write(&buf[0..size])
     }
@@ -259,11 +352,11 @@ impl Serializable for Varuint {
 /// use std::io::Read;
 /// 
 /// 
-/// fn test_varint(v: i64, size: usize) {
+/// fn test_varint(v: i128, size: usize) {
 ///     println!("{}", v);
 ///     let v = Varint(v);
 ///     assert_eq!(size, v.size_hint());
-///     let mut arr: [u8; 9] = unsafe { mem::uninitialized() };
+///     let mut arr: [u8; 17] = unsafe { mem::uninitialized() };
 ///     {
 ///         let mut buf = &mut arr as &mut [u8];
 ///         assert_eq!(size, v.serialize(&mut buf).unwrap());
@@ -301,67 +394,99 @@ impl Serializable for Varuint {
 /// test_varint(-72057594037927935/2, 8);
 /// test_varint(72057594037927935/2, 8);
 /// 
-/// test_varint(i64::min_value(), 9);
-/// test_varint(i64::max_value(), 9);
+/// test_varint(i64::min_value().into(), 9);
+/// test_varint(i64::max_value().into(), 9);
+///
+/// test_varint(i128::min_value(), 17);
+/// test_varint(i128::max_value(), 17);
 /// ```
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy, Clone)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
-pub struct Varint(pub i64);
+pub struct Varint(pub i128);
 
 impl fmt::Display for Varint {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
 
 impl Deref for Varint {
-    type Target = i64;
+    type Target = i128;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
 impl DerefMut for Varint {
+    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
+impl From<i8> for Varint {
+    #[inline]
+    fn from(i: i8) -> Self {
+        Varint(i.into())
+    }
+}
+
+impl From<i16> for Varint {
+    #[inline]
+    fn from(i: i16) -> Self {
+        Varint(i.into())
+    }
+}
+
 impl From<i32> for Varint {
+    #[inline]
     fn from(i: i32) -> Self {
-        Varint(i as i64)
+        Varint(i.into())
     }
 }
 
 impl From<i64> for Varint {
-    fn from(v: i64) -> Self {
+    #[inline]
+    fn from(i: i64) -> Self {
+        Varint(i.into())
+    }
+}
+
+impl From<i128> for Varint {
+    #[inline]
+    fn from(v: i128) -> Self {
         Varint(v)
     }
 }
 
 impl Default for Varint {
+    #[inline]
     fn default() -> Self {
         Varint(0)
     }
 }
 
 #[inline]
-fn varint_to_varuint(v: i64) -> u64 {
-    ((v << 1) ^ (v >> 63)) as u64
+fn varint_to_varuint(v: i128) -> u128 {
+    ((v << 1) ^ (v >> 127)) as u128
 }
 
 #[inline]
-fn varuint_to_varint(v: u64) -> i64 {
-    ((v >> 1) as i64) ^ -((v & 1) as i64)
+fn varuint_to_varint(v: u128) -> i128 {
+    ((v >> 1) as i128) ^ -((v & 1) as i128)
 }
 
 impl Serializable for Varint {
 
+    #[inline]
     fn size_hint(&self) -> usize {
         Varuint(varint_to_varuint(self.0)).size_hint()
     }
 
+    #[inline]
     fn serialize(&self, w: &mut Write) -> Result<usize> {
         Varuint(varint_to_varuint(self.0)).serialize(w)
     }
@@ -369,7 +494,7 @@ impl Serializable for Varint {
 
 impl Deserializable for Varint {
 
-    fn deserialize(mut r: &mut Read) -> Result<Varint> {
+    fn deserialize(r: &mut Read) -> Result<Varint> {
         Ok(Varint(varuint_to_varint(*Varuint::deserialize(r)?)))
     }
 }
