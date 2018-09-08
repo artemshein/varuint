@@ -1,3 +1,8 @@
+0.5.0
+=====
+
+* Switched to little-endian (up to 30% faster)
+
 0.4.0
 =====
 

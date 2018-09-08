@@ -1,6 +1,6 @@
 [package]
 name = "varuint"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["Artem Shein <sc-github@aisys.ru>"]
 
 description = "Variable length signed and unsigned integer types"

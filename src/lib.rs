@@ -60,13 +60,13 @@
 //!   * If `V<=240` then output a single byte `A0` equal to `V`.
 //!   * If `V<=2031` then output `A0` as `(V-240)/256 + 241` and `A1` as `(V-240)%256`.
 //!   * If `V<=67567` then output `A0` as `248`, `A1` as `(V-2032)/256`, and `A2` as `(V-2032)%256`.
-//!   * If `V<=16777215` then output `A0` as `249` and `A1` through `A3` as a big-endian 3-byte integer.
-//!   * If `V<=4294967295` then output `A0` as `250` and `A1..A4` as a big-ending 4-byte integer.
-//!   * If `V<=1099511627775` then output `A0` as `251` and `A1..A5` as a big-ending 5-byte integer.
-//!   * If `V<=281474976710655` then output `A0` as `252` and `A1..A6` as a big-ending 6-byte integer.
-//!   * If `V<=72057594037927935` then output `A0` as `253` and `A1..A7` as a big-ending 7-byte integer.
-//!   * If `V<=9223372036854775807` then output `A0` as `254` and `A1..A8` as a big-ending 8-byte integer.
-//!   * Otherwise output `A0` as `255` and `A1..A16` as a big-endian 16-byte integer.
+//!   * If `V<=16777215` then output `A0` as `249` and `A1` through `A3` as a little-endian 3-byte integer.
+//!   * If `V<=4294967295` then output `A0` as `250` and `A1..A4` as a little-ending 4-byte integer.
+//!   * If `V<=1099511627775` then output `A0` as `251` and `A1..A5` as a little-ending 5-byte integer.
+//!   * If `V<=281474976710655` then output `A0` as `252` and `A1..A6` as a little-ending 6-byte integer.
+//!   * If `V<=72057594037927935` then output `A0` as `253` and `A1..A7` as a little-ending 7-byte integer.
+//!   * If `V<=9223372036854775807` then output `A0` as `254` and `A1..A8` as a little-ending 8-byte integer.
+//!   * Otherwise output `A0` as `255` and `A1..A16` as a little-endian 16-byte integer.
 //!
 //! `Varint` converted to the `Varuint` in the first place and then encoded as an unsigned integer.
 //! Conversion method makes values closer to 0 take less space.

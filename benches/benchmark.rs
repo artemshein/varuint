@@ -15,20 +15,21 @@ fn serialize_varuint(v: u128) {
     let _ = v.serialize(&mut buf).unwrap();
 }
 
-fn serialize_varint(v: i128) {
-    let v = Varint(v);
-    let mut arr: [u8; 17] = unsafe { mem::uninitialized() };
-    let mut buf = &mut arr as &mut [u8];
-    let _ = v.serialize(&mut buf).unwrap();
-}
-
 fn serialize_1_benchmark(c: &mut Criterion) {
     c.bench_function("ser 1", |b| b.iter(|| serialize_varuint(25)));
+}
+
+fn serialize_5_benchmark(c: &mut Criterion) {
+    c.bench_function("ser 5", |b| b.iter(|| serialize_varuint(u32::max_value() as u128)));
+}
+
+fn serialize_9_benchmark(c: &mut Criterion) {
+    c.bench_function("ser 9", |b| b.iter(|| serialize_varuint(u64::max_value() as u128)));
 }
 
 fn serialize_17_benchmark(c: &mut Criterion) {
     c.bench_function("ser 17", |b| b.iter(|| serialize_varuint(u128::max_value())));
 }
 
-criterion_group!(benches, serialize_1_benchmark, serialize_17_benchmark);
+criterion_group!(benches, serialize_1_benchmark, serialize_5_benchmark, serialize_9_benchmark, serialize_17_benchmark);
 criterion_main!(benches);

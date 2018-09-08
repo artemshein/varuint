@@ -1,7 +1,4 @@
-use std::io::{Read, Write, Result};
-use std::mem;
-use std::ops::{Deref, DerefMut};
-use std::fmt;
+use std::{fmt, ptr, ops::{Deref, DerefMut}, mem, io::{Read, Write, Result}};
 
 /// Trait for serializable types
 pub trait Serializable {
@@ -140,6 +137,13 @@ impl Default for Varuint {
     }
 }
 
+#[inline(always)]
+fn write_value(buf: &mut [u8], v: u128, size: usize) {
+    for i in 0..size {
+        buf[i] = (v >> (8 * i)) as u8;
+    }
+}
+
 impl Varuint {
     fn serialize_buf(&self, buf: &mut [u8]) -> usize {
         let size = self.size_hint();
@@ -157,78 +161,45 @@ impl Varuint {
             }
             4 => {
                 buf[0] = 249;
-                buf[1] = (v >> 16) as u8;
-                buf[2] = (v >> 8) as u8;
-                buf[3] = v as u8;
+                write_value(&mut buf[1..], v, 3);
             }
             5 => {
                 buf[0] = 250;
-                buf[1] = (v >> 24) as u8;
-                buf[2] = (v >> 16) as u8;
-                buf[3] = (v >> 8) as u8;
-                buf[4] = v as u8;
+                unsafe { ptr::copy_nonoverlapping(&v as *const _ as *const u32, &mut buf[1] as *mut u8 as *mut u32, 1); }
             }
             6 => {
                 buf[0] = 251;
-                buf[1] = (v >> 32) as u8;
-                buf[2] = (v >> 24) as u8;
-                buf[3] = (v >> 16) as u8;
-                buf[4] = (v >> 8) as u8;
-                buf[5] = v as u8;
+                write_value(&mut buf[1..], v, 5);
             }
             7 => {
                 buf[0] = 252;
-                buf[1] = (v >> 40) as u8;
-                buf[2] = (v >> 32) as u8;
-                buf[3] = (v >> 24) as u8;
-                buf[4] = (v >> 16) as u8;
-                buf[5] = (v >> 8) as u8;
-                buf[6] = v as u8;
+                write_value(&mut buf[1..], v, 6);
             }
             8 => {
                 buf[0] = 253;
-                buf[1] = (v >> 48) as u8;
-                buf[2] = (v >> 40) as u8;
-                buf[3] = (v >> 32) as u8;
-                buf[4] = (v >> 24) as u8;
-                buf[5] = (v >> 16) as u8;
-                buf[6] = (v >> 8) as u8;
-                buf[7] = v as u8;
+                write_value(&mut buf[1..], v, 7);
             }
             9 => {
                 buf[0] = 254;
-                buf[1] = (v >> 56) as u8;
-                buf[2] = (v >> 48) as u8;
-                buf[3] = (v >> 40) as u8;
-                buf[4] = (v >> 32) as u8;
-                buf[5] = (v >> 24) as u8;
-                buf[6] = (v >> 16) as u8;
-                buf[7] = (v >> 8) as u8;
-                buf[8] = v as u8;
+                unsafe { ptr::copy_nonoverlapping(&v as *const _ as *const u64, &mut buf[1] as *mut u8 as *mut u64, 1); }
             }
             17 => {
                 buf[0]  = 255;
-                buf[1]  = (v >> (8 * 15)) as u8;
-                buf[2]  = (v >> (8 * 14)) as u8;
-                buf[3]  = (v >> (8 * 13)) as u8;
-                buf[4]  = (v >> (8 * 12)) as u8;
-                buf[5]  = (v >> (8 * 11)) as u8;
-                buf[6]  = (v >> (8 * 10)) as u8;
-                buf[7]  = (v >> (8 * 9)) as u8;
-                buf[8]  = (v >> (8 * 8)) as u8;
-                buf[9]  = (v >> (8 * 7)) as u8;
-                buf[10] = (v >> (8 * 6)) as u8;
-                buf[11] = (v >> (8 * 5)) as u8;
-                buf[12] = (v >> (8 * 4)) as u8;
-                buf[13] = (v >> (8 * 3)) as u8;
-                buf[14] = (v >> (8 * 2)) as u8;
-                buf[15] = (v >> (8 * 1)) as u8;
-                buf[16] = v as u8;
+                unsafe { ptr::copy_nonoverlapping(&v as *const _ as *const u128, &mut buf[1] as *mut u8 as *mut u128, 1); }
             }
             _ => unreachable!()
         };
         size
     }
+}
+
+#[inline(always)]
+fn read_value(buf: &[u8], size: usize) -> u128 {
+    let mut v = 0;
+    for i in 0..size {
+        v |= (buf[i] as u128) << (8 * i);
+    }
+    v
 }
 
 impl Deserializable for Varuint {
@@ -253,55 +224,25 @@ impl Deserializable for Varuint {
         Ok(Varuint(match length {
             2 => 240u128 + 256u128 * (buf[0] as u128 - 241u128) + buf[1] as u128,
             3 => 2032u128 + 256u128 * buf[1] as u128 + buf[2] as u128,
-            4 => ((buf[1] as u128) << 16)
-                | ((buf[2] as u128) << 8)
-                | buf[3] as u128,
-            5 => ((buf[1] as u128) << 24)
-                | ((buf[2] as u128) << 16)
-                | ((buf[3] as u128) << 8)
-                | buf[4] as u128,
-            6 => ((buf[1] as u128) << 32)
-                | ((buf[2] as u128) << 24)
-                | ((buf[3] as u128) << 16)
-                | ((buf[4] as u128) << 8)
-                | buf[5] as u128,
-            7 => ((buf[1] as u128) << 40)
-                | ((buf[2] as u128) << 32)
-                | ((buf[3] as u128) << 24)
-                | ((buf[4] as u128) << 16)
-                | ((buf[5] as u128) << 8)
-                | buf[6] as u128,
-            8 => ((buf[1] as u128) << 48)
-                | ((buf[2] as u128) << 40)
-                | ((buf[3] as u128) << 32)
-                | ((buf[4] as u128) << 24)
-                | ((buf[5] as u128) << 16)
-                | ((buf[6] as u128) << 8)
-                | buf[7] as u128,
-            9 => ((buf[1] as u128) << 56)
-                | ((buf[2] as u128) << 48)
-                | ((buf[3] as u128) << 40)
-                | ((buf[4] as u128) << 32)
-                | ((buf[5] as u128) << 24)
-                | ((buf[6] as u128) << 16)
-                | ((buf[7] as u128) << 8)
-                | buf[8] as u128,
-            17 => ((buf[1] as u128) << (8 * 15))
-                | ((buf[2] as u128) << (8 * 14))
-                | ((buf[3] as u128) << (8 * 13))
-                | ((buf[4] as u128) << (8 * 12))
-                | ((buf[5] as u128) << (8 * 11))
-                | ((buf[6] as u128) << (8 * 10))
-                | ((buf[7] as u128) << (8 * 9))
-                | ((buf[8] as u128) << (8 * 8))
-                | ((buf[9] as u128) << (8 * 7))
-                | ((buf[10] as u128) << (8 * 6))
-                | ((buf[11] as u128) << (8 * 5))
-                | ((buf[12] as u128) << (8 * 4))
-                | ((buf[13] as u128) << (8 * 3))
-                | ((buf[14] as u128) << (8 * 2))
-                | ((buf[15] as u128) << (8 * 1))
-                |   buf[16] as u128,
+            4 => read_value(&buf[1..], 3),
+            5 => {
+                let mut v: u32 = unsafe { mem::uninitialized() };
+                unsafe { ptr::copy_nonoverlapping(&buf[1] as *const _ as *const u32, &mut v, 1); }
+                v as u128
+            },
+            6 => read_value(&buf[1..], 5),
+            7 => read_value(&buf[1..], 6),
+            8 => read_value(&buf[1..], 7),
+            9 => {
+                let mut v: u64 = unsafe { mem::uninitialized() };
+                unsafe { ptr::copy_nonoverlapping(&buf[1] as *const _ as *const u64, &mut v, 1); }
+                v as u128
+            },
+            17 => {
+                let mut v: u128 = unsafe { mem::uninitialized() };
+                unsafe { ptr::copy_nonoverlapping(&buf[1] as *const _ as *const u128, &mut v, 1); }
+                v
+            },
             _ => unreachable!()
         }))
     }
