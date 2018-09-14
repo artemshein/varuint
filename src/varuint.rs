@@ -22,20 +22,14 @@ pub trait Deserializable : Sized {
 /// use std::mem;
 /// 
 /// use varuint::{Varuint, Serializable, Deserializable};
-/// use std::io::Read;
-/// 
+///
 /// 
 /// fn test_varuint(v: u128, size: usize) {
 ///  let v = Varuint(v);
 ///  assert_eq!(size, v.size_hint());
 ///  let mut arr: [u8; 17] = unsafe { mem::uninitialized() };
-///  {
-///      let mut buf = &mut arr as &mut [u8];
-///      assert_eq!(size, v.serialize(&mut buf).unwrap());
-///  }
-///  let mut buf: &[u8] = &arr;
-///  let mut read: &mut Read = &mut buf;
-///  assert_eq!(v, Varuint::deserialize(read).unwrap());
+///  assert_eq!(size, v.serialize(&mut (&mut arr as &mut [u8])).unwrap());
+///  assert_eq!(v, Varuint::deserialize(&mut (&arr as &[u8])).unwrap());
 /// }
 /// 
 /// test_varuint(0, 1);
@@ -290,21 +284,14 @@ impl Serializable for Varuint {
 /// use std::mem;
 /// 
 /// use varuint::{Varint, Serializable, Deserializable};
-/// use std::io::Read;
-/// 
-/// 
+///
 /// fn test_varint(v: i128, size: usize) {
 ///     println!("{}", v);
 ///     let v = Varint(v);
 ///     assert_eq!(size, v.size_hint());
 ///     let mut arr: [u8; 17] = unsafe { mem::uninitialized() };
-///     {
-///         let mut buf = &mut arr as &mut [u8];
-///         assert_eq!(size, v.serialize(&mut buf).unwrap());
-///     }
-///     let mut buf: &[u8] = &arr;
-///     let mut read: &mut Read = &mut buf;
-///     assert_eq!(v, Varint::deserialize(read).unwrap());
+///     assert_eq!(size, v.serialize(&mut (&mut arr as &mut [u8])).unwrap());
+///     assert_eq!(v, Varint::deserialize(&mut (&arr as &[u8])).unwrap());
 /// }
 /// 
 /// test_varint(0, 1);

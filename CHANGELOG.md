@@ -1,3 +1,8 @@
+0.5.1
+=====
+
+* Simplify docs examples
+
 0.5.0
 =====
 
