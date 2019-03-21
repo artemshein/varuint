@@ -1,3 +1,9 @@
+0.6.0
+=====
+
+* API rework
+* Up to 30% faster on small values
+
 0.5.1
 =====
 

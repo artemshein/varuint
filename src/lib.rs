@@ -3,10 +3,10 @@
 //!
 //! Encoding rules are based on [SQLite 4 Varuint type](https://!sqlite.org/src4/doc/trunk/www/varint.wiki)
 //! with modifications for support of 128-bit long integers.
-//! Varint is encoded using the [Protobuf ZigZag approach](https://!developers.google.com/protocol-buffers/docs/encoding#signed-integers)
-//! and reuses `Varuint` as a storage.
+//! Signed integers are encoded using the [Protobuf ZigZag approach](https://!developers.google.com/protocol-buffers/docs/encoding#signed-integers)
+//! and reuses unsigned integer as a storage.
 //!
-//! Unlike the Protobuf encoding rules `Varuint` needs the first byte only to find out the length of the
+//! Unlike the Protobuf encoding rules `Varint` needs the first byte only to find out the length of the
 //! whole value. Microbenchmarks say that it is a lot faster.
 //!
 //! ## How to use
@@ -15,64 +15,60 @@
 //!
 //! ```cargo
 //! [dependencies]
-//! varuint = "0.5"
+//! varuint = "0.6"
 //! ```
 //!
 //! Add imports to your code:
 //!
 //! ```rust,no_run
 //!
-//! use varuint::{Varint, Varuint, Serializable, Deserializable};
+//! use varuint::{Varint, Serializable, Deserializable};
 //! ```
 //!
 //! Use it:
 //!
 //! ```rust,no_run
 //! use std::mem;
+//! use std::io::Cursor;
 //!
 //! use varuint::*;
 //!
-//! fn test_varint(v: i128, size: usize) {
-//!     let v = Varint(v);
-//!     assert_eq!(size, v.size_hint());
-//!     let mut arr: [u8; 17] = unsafe { mem::uninitialized() };
-//!     assert_eq!(size, v.serialize(&mut (&mut arr as &mut [u8])).unwrap());
-//!     assert_eq!(v, Varint::deserialize(&mut (&arr as &[u8])).unwrap());
-//! }
-//!
 //! fn main() {
-//!     test_varint(0, 1);
-//!     test_varint(1, 1);
-//!     test_varint(-1, 1);
+//!     let mut cursor = Cursor::new(vec![]);
+//!     let _ = cursor.write_varint(1u8).unwrap();
+//!     let _ = cursor.write_varint(-300i16).unwrap();
+//!     let v = Varint(-56_782i128);
+//!     let _ = v.serialize(&mut cursor).unwrap();
+//!     cursor.set_position(0);
+//!     assert_eq!(1u8, ReadVarint::<u8>::read_varint(&mut cursor).unwrap());
+//!     assert_eq!(-300i16, ReadVarint::<i16>::read_varint(&mut cursor).unwrap());
+//!     assert_eq!(v, Varint::<i128>::deserialize(&mut cursor).unwrap());
 //! }
 //! ```
 //!
 //! ## Encoding rules
 //!
-//! Encoding rules for `Varuint` are (assuming value is `V`):
+//! Encoding rules for unsinged integer `Varint` are (assuming value is `V`):
 //!
 //!   * If `V<=240` then output a single byte `A0` equal to `V`.
 //!   * If `V<=2031` then output `A0` as `(V-240)/256 + 241` and `A1` as `(V-240)%256`.
 //!   * If `V<=67567` then output `A0` as `248`, `A1` as `(V-2032)/256`, and `A2` as `(V-2032)%256`.
-//!   * If `V<=16777215` then output `A0` as `249` and `A1` through `A3` as a little-endian 3-byte integer.
-//!   * If `V<=4294967295` then output `A0` as `250` and `A1..A4` as a little-endian 4-byte integer.
-//!   * If `V<=1099511627775` then output `A0` as `251` and `A1..A5` as a little-endian 5-byte integer.
-//!   * If `V<=281474976710655` then output `A0` as `252` and `A1..A6` as a little-endian 6-byte integer.
-//!   * If `V<=72057594037927935` then output `A0` as `253` and `A1..A7` as a little-endian 7-byte integer.
-//!   * If `V<=9223372036854775807` then output `A0` as `254` and `A1..A8` as a little-endian 8-byte integer.
+//!   * If `V<=16_777_215` then output `A0` as `249` and `A1` through `A3` as a little-endian 3-byte integer.
+//!   * If `V<=4_294_967_295` then output `A0` as `250` and `A1..A4` as a little-endian 4-byte integer.
+//!   * If `V<=1_099_511_627_775` then output `A0` as `251` and `A1..A5` as a little-endian 5-byte integer.
+//!   * If `V<=281_474_976_710_655` then output `A0` as `252` and `A1..A6` as a little-endian 6-byte integer.
+//!   * If `V<=72_057_594_037_927_935` then output `A0` as `253` and `A1..A7` as a little-endian 7-byte integer.
+//!   * If `V<=9_223_372_036_854_775_807` then output `A0` as `254` and `A1..A8` as a little-endian 8-byte integer.
 //!   * Otherwise output `A0` as `255` and `A1..A16` as a little-endian 16-byte integer.
 //!
-//! `Varint` converted to the `Varuint` in the first place and then encoded as an unsigned integer.
-//! Conversion method makes values closer to 0 take less space.
+//! Signed integer `Varint` converted to the unsigned integer `Varint` in the first place and then encoded as an unsigned integer.
+//! Conversion method makes values closer to 0 to take less space.
 //! See [Protobuf docs](https://!developers.google.com/protocol-buffers/docs/encoding#signed-integers)
 //! for details.
-mod varuint;
+mod read_write;
+mod ser_deser;
+mod varint;
 
-#[macro_use]
-#[cfg(feature = "serde-support")]
-extern crate serde_derive;
-#[cfg(feature = "serde-support")]
-extern crate serde;
-
-
-pub use varuint::{Serializable, Deserializable, Varuint, Varint};
+pub use crate::read_write::{ReadVarint, VarintSizeHint, WriteVarint};
+pub use crate::ser_deser::{Deserializable, Serializable};
+pub use crate::varint::{Varint, VarintBaseType};
