@@ -1,9 +1,9 @@
 //! Variable length signed and unsigned integer types.
 //! Types support up to 128-bit integers, both are encoded to 1-17 bytes.
 //!
-//! Encoding rules are based on [SQLite 4 Varuint type](https://!sqlite.org/src4/doc/trunk/www/varint.wiki)
+//! Encoding rules are based on [SQLite 4 Varuint type](https://sqlite.org/src4/doc/trunk/www/varint.wiki)
 //! with modifications for support of 128-bit long integers.
-//! Signed integers are encoded using the [Protobuf ZigZag approach](https://!developers.google.com/protocol-buffers/docs/encoding#signed-integers)
+//! Signed integers are encoded using the [Protobuf ZigZag approach](https://developers.google.com/protocol-buffers/docs/encoding#signed-integers)
 //! and reuses unsigned integer as a storage.
 //!
 //! Unlike the Protobuf encoding rules `Varint` needs the first byte only to find out the length of the
@@ -63,7 +63,7 @@
 //!
 //! Signed integer `Varint` converted to the unsigned integer `Varint` in the first place and then encoded as an unsigned integer.
 //! Conversion method makes values closer to 0 to take less space.
-//! See [Protobuf docs](https://!developers.google.com/protocol-buffers/docs/encoding#signed-integers)
+//! See [Protobuf docs](https://developers.google.com/protocol-buffers/docs/encoding#signed-integers)
 //! for details.
 mod read_write;
 mod ser_deser;
