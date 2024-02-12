@@ -137,7 +137,7 @@ impl<T: Write + ?Sized> WriteVarint<u8> for T {
             2 => {
                 self.write_all(&[241, (v - 240) as u8])?;
             }
-            _ => return Err(Error::from(ErrorKind::InvalidData)),
+            _ => unreachable!(),
         }
         Ok(size)
     }

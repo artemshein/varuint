@@ -2,21 +2,21 @@
 extern crate criterion;
 extern crate varuint;
 
-use std::{io::{Read, Write}, mem};
-
 use criterion::Criterion;
 
 use varuint::*;
 
-static mut BUF: &mut [u8] = &mut [0u8; 17];
-
-fn serialize_varint<T>(v: T) where &'static mut [u8]: varuint::WriteVarint<T> {
-    let _ = unsafe { (&mut BUF).write_varint(v).unwrap() };
+fn serialize_varint<T>(v: T) where for<'a> &'a mut [u8]: varuint::WriteVarint<T> {
+    let mut arr: [u8; 17] = [0; 17];
+    {
+        let mut buf = &mut arr as &mut [u8];
+        let _ = buf.write_varint(v).unwrap();
+    }
 }
 
 fn serialize_varint_128(v: u128) {
     let v = Varint(v);
-    let mut arr: [u8; 17] = unsafe { mem::uninitialized() };
+    let mut arr: [u8; 17] = [0; 17];
     let mut buf = &mut arr as &mut [u8];
     let _ = v.serialize(&mut buf).unwrap();
 }

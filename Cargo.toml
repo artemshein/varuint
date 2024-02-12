@@ -1,6 +1,6 @@
 [package]
 name = "varuint"
-version = "0.7.0"
+version = "0.7.1"
 authors = ["Artem Shein <sc-github@aisys.ru>"]
 edition = "2021"
 
@@ -11,14 +11,14 @@ license = "MIT"
 
 [features]
 default = []
-serde-support = ["serde", "serde_derive"]
+serde-support = ["dep:serde", "dep:serde_derive"]
 
 [dependencies]
 serde_derive = { version = "1", optional = true }
 serde = { version = "1", optional = true }
 
 [dev-dependencies]
-criterion = "0.2"
+criterion = "0.5"
 
 [[bench]]
 name = "benchmark"
