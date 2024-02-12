@@ -1,3 +1,10 @@
+0.7.0
+=====
+
+* Do not use mem::unitialized
+* Return error on parsing error
+* Fixed BE host issues
+
 0.6.0
 =====
 

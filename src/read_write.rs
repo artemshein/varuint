@@ -1,6 +1,6 @@
-use std::io::Result;
+use std::convert::TryInto;
+use std::io::{Error, ErrorKind, Result};
 use std::io::{Read, Write};
-use std::{mem, ptr};
 
 /// Varuint size hinting trait
 pub trait VarintSizeHint {
@@ -131,173 +131,157 @@ pub trait WriteVarint<T> {
 
 impl<T: Write + ?Sized> WriteVarint<u8> for T {
     fn write_varint(&mut self, v: u8) -> Result<usize> {
-        let mut buf: [u8; 2] = unsafe { mem::uninitialized() };
         let size = v.varint_size();
         match size {
-            1 => buf[0] = v,
+            1 => self.write_all(&[v])?,
             2 => {
-                buf[0] = 241;
-                buf[1] = (v - 240) as u8;
+                self.write_all(&[241, (v - 240) as u8])?;
             }
-            _ => unreachable!(),
+            _ => return Err(Error::from(ErrorKind::InvalidData)),
         }
-        self.write(&buf[0..size])
+        Ok(size)
     }
 }
 
 impl<T: Write + ?Sized> WriteVarint<u16> for T {
     fn write_varint(&mut self, v: u16) -> Result<usize> {
-        let mut buf: [u8; 3] = unsafe { mem::uninitialized() };
         let size = v.varint_size();
         match size {
-            1 => buf[0] = v as u8,
+            1 => {
+                self.write_all(&[v as u8])?
+            },
             2 => {
-                buf[0] = ((v - 240) / 256 + 241) as u8;
-                buf[1] = ((v - 240) % 256) as u8;
+                self.write_all(&[((v - 240) / 256 + 241) as u8, ((v - 240) % 256) as u8])?;
             }
             3 => {
-                buf[0] = 248;
-                buf[1] = ((v - 2032) / 256) as u8;
-                buf[2] = ((v - 2032) % 256) as u8;
+                self.write_all(&[248, ((v - 2032) / 256) as u8, ((v - 2032) % 256) as u8])?;
             }
             _ => unreachable!(),
         }
-        self.write(&buf[0..size])
+        Ok(size)
     }
 }
 
 impl<T: Write + ?Sized> WriteVarint<u32> for T {
     fn write_varint(&mut self, v: u32) -> Result<usize> {
-        let mut buf: [u8; 5] = unsafe { mem::uninitialized() };
         let size = v.varint_size();
         match size {
-            1 => buf[0] = v as u8,
+            1 => self.write_all(&[v as u8])?,
             2 => {
-                buf[0] = ((v - 240) / 256 + 241) as u8;
-                buf[1] = ((v - 240) % 256) as u8;
+                self.write_all(&[((v - 240) / 256 + 241) as u8, ((v - 240) % 256) as u8])?;
             }
             3 => {
-                buf[0] = 248;
-                buf[1] = ((v - 2032) / 256) as u8;
-                buf[2] = ((v - 2032) % 256) as u8;
+                self.write_all(&[
+                    248,
+                    ((v - 2032) / 256) as u8,
+                    ((v - 2032) % 256) as u8,
+                ])?;
             }
             4 => {
-                buf[0] = 249;
-                write_value_32(&mut buf[1..=3], v);
+                self.write_all(&[249])?;
+                self.write_all(&v.to_le_bytes()[0..3])?;
             }
             5 => {
-                buf[0] = 250;
-                unsafe {
-                    ptr::copy_nonoverlapping(&v as *const _ as *const u8, &mut buf[1], 4);
-                }
+                self.write_all(&[250])?;
+                self.write_all(&v.to_le_bytes()[0..4])?;
             }
             _ => unreachable!(),
         }
-        self.write(&buf[0..size])
+        Ok(size)
     }
 }
 
 impl<T: Write + ?Sized> WriteVarint<u64> for T {
     fn write_varint(&mut self, v: u64) -> Result<usize> {
-        let mut buf: [u8; 9] = unsafe { mem::uninitialized() };
         let size = v.varint_size();
         match size {
-            1 => buf[0] = v as u8,
+            1 => self.write_all(&[v as u8])?,
             2 => {
-                buf[0] = ((v - 240) / 256 + 241) as u8;
-                buf[1] = ((v - 240) % 256) as u8;
+                self.write_all(&[((v - 240) / 256 + 241) as u8, ((v - 240) % 256) as u8])?;
             }
             3 => {
-                buf[0] = 248;
-                buf[1] = ((v - 2032) / 256) as u8;
-                buf[2] = ((v - 2032) % 256) as u8;
+                self.write_all(&[
+                    248,
+                    ((v - 2032) / 256) as u8,
+                    ((v - 2032) % 256) as u8,
+                ])?;
             }
             4 => {
-                buf[0] = 249;
-                write_value_64(&mut buf[1..=3], v);
+                self.write_all(&[249])?;
+                self.write_all(&v.to_le_bytes()[0..3])?;
             }
             5 => {
-                buf[0] = 250;
-                unsafe {
-                    ptr::copy_nonoverlapping(&v as *const _ as *const u8, &mut buf[1], 4);
-                }
+                self.write_all(&[250])?;
+                self.write_all(&v.to_le_bytes()[0..4])?;
             }
             6 => {
-                buf[0] = 251;
-                write_value_64(&mut buf[1..=5], v);
+                self.write_all(&[251])?;
+                self.write_all(&v.to_le_bytes()[0..5])?;
             }
             7 => {
-                buf[0] = 252;
-                write_value_64(&mut buf[1..=6], v);
+                self.write_all(&[252])?;
+                self.write_all(&v.to_le_bytes()[0..6])?;
             }
             8 => {
-                buf[0] = 253;
-                write_value_64(&mut buf[1..=7], v);
+                self.write_all(&[253])?;
+                self.write_all(&v.to_le_bytes()[0..7])?;
             }
             9 => {
-                buf[0] = 254;
-                unsafe {
-                    ptr::copy_nonoverlapping(&v as *const _ as *const u8, &mut buf[1], 8);
-                }
+                self.write_all(&[254])?;
+                self.write_all(&v.to_le_bytes()[0..8])?;
             }
             _ => unreachable!(),
         }
-        self.write(&buf[0..size])
+        Ok(size)
     }
 }
 
 impl<T: Write + ?Sized> WriteVarint<u128> for T {
     fn write_varint(&mut self, v: u128) -> Result<usize> {
-        let mut buf: [u8; 17] = unsafe { mem::uninitialized() };
         let size = v.varint_size();
         match size {
-            1 => buf[0] = v as u8,
+            1 => self.write_all(&[v as u8])?,
             2 => {
-                buf[0] = ((v - 240) / 256 + 241) as u8;
-                buf[1] = ((v - 240) % 256) as u8;
+                self.write_all(&[((v - 240) / 256 + 241) as u8, ((v - 240) % 256) as u8])?;
             }
             3 => {
-                buf[0] = 248;
-                buf[1] = ((v - 2032) / 256) as u8;
-                buf[2] = ((v - 2032) % 256) as u8;
+                self.write_all(&[
+                    248,
+                    ((v - 2032) / 256) as u8,
+                    ((v - 2032) % 256) as u8,
+                ])?;
             }
             4 => {
-                buf[0] = 249;
-                write_value_128(&mut buf[1..=3], v);
+                self.write_all(&[249])?;
+                self.write_all(&v.to_le_bytes()[0..3])?;
             }
             5 => {
-                buf[0] = 250;
-                unsafe {
-                    ptr::copy_nonoverlapping(&v as *const _ as *const u8, &mut buf[1], 4);
-                }
+                self.write_all(&[250])?;
+                self.write_all(&v.to_le_bytes()[0..4])?;
             }
             6 => {
-                buf[0] = 251;
-                write_value_128(&mut buf[1..=5], v);
+                self.write_all(&[251])?;
+                self.write_all(&v.to_le_bytes()[0..5])?;
             }
             7 => {
-                buf[0] = 252;
-                write_value_128(&mut buf[1..=6], v);
+                self.write_all(&[252])?;
+                self.write_all(&v.to_le_bytes()[0..6])?;
             }
             8 => {
-                buf[0] = 253;
-                write_value_128(&mut buf[1..=7], v);
+                self.write_all(&[253])?;
+                self.write_all(&v.to_le_bytes()[0..7])?;
             }
             9 => {
-                buf[0] = 254;
-                unsafe {
-                    ptr::copy_nonoverlapping(&v as *const _ as *const u8, &mut buf[1], 8);
-                }
+                self.write_all(&[254])?;
+                self.write_all(&v.to_le_bytes()[0..8])?;
             }
             17 => {
-                buf[0] = 255;
-                unsafe {
-                    ptr::copy_nonoverlapping(&v as *const _ as *const u8, &mut buf[1], 16);
-                }
+                self.write_all(&[255])?;
+                self.write_all(&v.to_le_bytes()[0..16])?;
             }
             _ => unreachable!(),
         }
-        self.write(&buf[0..size])
+        Ok(size)
     }
 }
 
@@ -337,12 +321,12 @@ pub trait ReadVarint<T> {
 
 impl<T: Read + ?Sized> ReadVarint<u8> for T {
     fn read_varint(&mut self) -> Result<u8> {
-        let mut buf: [u8; 2] = unsafe { mem::uninitialized() };
+        let mut buf = [0u8; 2];
         self.read_exact(&mut buf[0..1])?;
         let length = match buf[0] {
-            v @ 0...240 => return Ok(v),
-            241...247 => 2,
-            _ => unreachable!(),
+            v @ 0..=240 => return Ok(v),
+            241..=247 => 2,
+            _ => return Err(Error::from(ErrorKind::InvalidData)),
         };
         self.read_exact(&mut buf[1..length])?;
         Ok(match length {
@@ -354,13 +338,13 @@ impl<T: Read + ?Sized> ReadVarint<u8> for T {
 
 impl<T: Read + ?Sized> ReadVarint<u16> for T {
     fn read_varint(&mut self) -> Result<u16> {
-        let mut buf: [u8; 3] = unsafe { mem::uninitialized() };
+        let mut buf: [u8; 3] = [0u8; 3];
         self.read_exact(&mut buf[0..1])?;
         let length = match buf[0] {
-            v @ 0...240 => return Ok(u16::from(v)),
-            241...247 => 2,
+            v @ 0..=240 => return Ok(u16::from(v)),
+            241..=247 => 2,
             248 => 3,
-            _ => unreachable!(),
+            _ => return Err(Error::from(ErrorKind::InvalidData)),
         };
         self.read_exact(&mut buf[1..length])?;
         Ok(match length {
@@ -373,15 +357,15 @@ impl<T: Read + ?Sized> ReadVarint<u16> for T {
 
 impl<T: Read + ?Sized> ReadVarint<u32> for T {
     fn read_varint(&mut self) -> Result<u32> {
-        let mut buf: [u8; 5] = unsafe { mem::uninitialized() };
+        let mut buf: [u8; 5] = [0u8; 5];
         self.read_exact(&mut buf[0..1])?;
         let length = match buf[0] {
-            v @ 0...240 => return Ok(u32::from(v)),
-            241...247 => 2,
+            v @ 0..=240 => return Ok(u32::from(v)),
+            241..=247 => 2,
             248 => 3,
             249 => 4,
             250 => 5,
-            _ => unreachable!(),
+            _ => return Err(Error::from(ErrorKind::InvalidData)),
         };
         self.read_exact(&mut buf[1..length])?;
         Ok(match length {
@@ -389,11 +373,7 @@ impl<T: Read + ?Sized> ReadVarint<u32> for T {
             3 => 2032u32 + 256u32 * u32::from(buf[1]) + u32::from(buf[2]),
             4 => read_value_32(&buf[1..=3]),
             5 => {
-                let mut v: u32 = unsafe { mem::uninitialized() };
-                unsafe {
-                    ptr::copy_nonoverlapping(&buf[1], &mut v as *mut _ as *mut u8, 4);
-                }
-                v
+                u32::from_le_bytes(buf[1..].try_into().unwrap())
             }
             _ => unreachable!(),
         })
@@ -402,11 +382,11 @@ impl<T: Read + ?Sized> ReadVarint<u32> for T {
 
 impl<T: Read + ?Sized> ReadVarint<u64> for T {
     fn read_varint(&mut self) -> Result<u64> {
-        let mut buf: [u8; 9] = unsafe { mem::uninitialized() };
+        let mut buf: [u8; 9] = [0u8; 9];
         self.read_exact(&mut buf[0..1])?;
         let length = match buf[0] {
-            v @ 0...240 => return Ok(u64::from(v)),
-            241...247 => 2,
+            v @ 0..=240 => return Ok(u64::from(v)),
+            241..=247 => 2,
             248 => 3,
             249 => 4,
             250 => 5,
@@ -414,7 +394,7 @@ impl<T: Read + ?Sized> ReadVarint<u64> for T {
             252 => 7,
             253 => 8,
             254 => 9,
-            _ => unreachable!(),
+            _ => return Err(Error::from(ErrorKind::InvalidData)),
         };
         self.read_exact(&mut buf[1..length])?;
         Ok(match length {
@@ -422,21 +402,13 @@ impl<T: Read + ?Sized> ReadVarint<u64> for T {
             3 => 2032u64 + 256u64 * u64::from(buf[1]) + u64::from(buf[2]),
             4 => read_value_64(&buf[1..=3]),
             5 => {
-                let mut v: u32 = unsafe { mem::uninitialized() };
-                unsafe {
-                    ptr::copy_nonoverlapping(&buf[1], &mut v as *mut _ as *mut u8, 4);
-                }
-                u64::from(v)
+                u64::from(u32::from_le_bytes(buf[1..5].try_into().unwrap()))
             }
             6 => read_value_64(&buf[1..=5]),
             7 => read_value_64(&buf[1..=6]),
             8 => read_value_64(&buf[1..=7]),
             9 => {
-                let mut v: u64 = unsafe { mem::uninitialized() };
-                unsafe {
-                    ptr::copy_nonoverlapping(&buf[1], &mut v as *mut _ as *mut u8, 8);
-                }
-                v
+                u64::from_le_bytes(buf[1..].try_into().unwrap())
             }
             _ => unreachable!(),
         })
@@ -445,11 +417,11 @@ impl<T: Read + ?Sized> ReadVarint<u64> for T {
 
 impl<T: Read + ?Sized> ReadVarint<u128> for T {
     fn read_varint(&mut self) -> Result<u128> {
-        let mut buf: [u8; 17] = unsafe { mem::uninitialized() };
+        let mut buf: [u8; 17] = [0u8; 17];
         self.read_exact(&mut buf[0..1])?;
         let length = match buf[0] {
-            v @ 0...240 => return Ok(u128::from(v)),
-            241...247 => 2,
+            v @ 0..=240 => return Ok(u128::from(v)),
+            241..=247 => 2,
             248 => 3,
             249 => 4,
             250 => 5,
@@ -465,28 +437,16 @@ impl<T: Read + ?Sized> ReadVarint<u128> for T {
             3 => 2032u128 + 256u128 * u128::from(buf[1]) + u128::from(buf[2]),
             4 => read_value_128(&buf[1..=3]),
             5 => {
-                let mut v: u32 = unsafe { mem::uninitialized() };
-                unsafe {
-                    ptr::copy_nonoverlapping(&buf[1], &mut v as *mut _ as *mut u8, 4);
-                }
-                u128::from(v)
+                u128::from(u32::from_le_bytes(buf[1..=4].try_into().unwrap()))
             }
             6 => read_value_128(&buf[1..=5]),
             7 => read_value_128(&buf[1..=6]),
             8 => read_value_128(&buf[1..=7]),
             9 => {
-                let mut v: u64 = unsafe { mem::uninitialized() };
-                unsafe {
-                    ptr::copy_nonoverlapping(&buf[1], &mut v as *mut _ as *mut u8, 8);
-                }
-                u128::from(v)
+                u128::from(u64::from_le_bytes(buf[1..=8].try_into().unwrap()))
             }
             17 => {
-                let mut v: u128 = unsafe { mem::uninitialized() };
-                unsafe {
-                    ptr::copy_nonoverlapping(&buf[1], &mut v as *mut _ as *mut u8, 16);
-                }
-                v
+                u128::from_le_bytes(buf[1..].try_into().unwrap())
             }
             _ => unreachable!(),
         })
@@ -523,75 +483,54 @@ impl<T: Read + ?Sized> ReadVarint<i128> for T {
     }
 }
 
-#[inline]
+#[inline(always)]
 fn varint_to_varuint_8(v: i8) -> u8 {
     ((v << 1) ^ (v >> 7)) as u8
 }
 
-#[inline]
+#[inline(always)]
 fn varuint_to_varint_8(v: u8) -> i8 {
     ((v >> 1) as i8) ^ -((v & 1) as i8)
 }
 
-#[inline]
+#[inline(always)]
 fn varint_to_varuint_16(v: i16) -> u16 {
     ((v << 1) ^ (v >> 15)) as u16
 }
 
-#[inline]
+#[inline(always)]
 fn varuint_to_varint_16(v: u16) -> i16 {
     ((v >> 1) as i16) ^ -((v & 1) as i16)
 }
 
-#[inline]
+#[inline(always)]
 fn varint_to_varuint_32(v: i32) -> u32 {
     ((v << 1) ^ (v >> 31)) as u32
 }
 
-#[inline]
+#[inline(always)]
 fn varuint_to_varint_32(v: u32) -> i32 {
     ((v >> 1) as i32) ^ -((v & 1) as i32)
 }
 
-#[inline]
+#[inline(always)]
 fn varint_to_varuint_64(v: i64) -> u64 {
     ((v << 1) ^ (v >> 63)) as u64
 }
 
-#[inline]
+#[inline(always)]
 fn varuint_to_varint_64(v: u64) -> i64 {
     ((v >> 1) as i64) ^ -((v & 1) as i64)
 }
 
-#[inline]
+#[inline(always)]
 fn varint_to_varuint_128(v: i128) -> u128 {
     ((v << 1) ^ (v >> 127)) as u128
 }
 
-#[inline]
+#[inline(always)]
 fn varuint_to_varint_128(v: u128) -> i128 {
     ((v >> 1) as i128) ^ -((v & 1) as i128)
-}
-
-#[inline(always)]
-fn write_value_32(buf: &mut [u8], v: u32) {
-    for (i, val) in buf.iter_mut().enumerate() {
-        *val = (v >> (8 * i)) as u8;
-    }
-}
-
-#[inline(always)]
-fn write_value_64(buf: &mut [u8], v: u64) {
-    for (i, val) in buf.iter_mut().enumerate() {
-        *val = (v >> (8 * i)) as u8;
-    }
-}
-
-#[inline(always)]
-fn write_value_128(buf: &mut [u8], v: u128) {
-    for (i, val) in buf.iter_mut().enumerate() {
-        *val = (v >> (8 * i)) as u8;
-    }
 }
 
 #[inline(always)]

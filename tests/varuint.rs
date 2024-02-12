@@ -1,4 +1,3 @@
-use std::mem;
 use varuint::{Deserializable, Serializable, Varint, VarintBaseType};
 
 fn test_varuint<T: VarintBaseType>(v: T, size: usize)
@@ -7,7 +6,7 @@ where
 {
     let v = Varint::<T>(v);
     assert_eq!(size, v.size_hint());
-    let mut arr: [u8; 17] = unsafe { mem::uninitialized() };
+    let mut arr: [u8; 17] = [0u8; 17];
     assert_eq!(size, v.serialize(&mut (&mut arr as &mut [u8])).unwrap());
     assert_eq!(v, Varint::deserialize(&mut (&arr as &[u8])).unwrap());
 }
