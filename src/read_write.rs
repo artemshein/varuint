@@ -135,7 +135,7 @@ impl<T: Write + ?Sized> WriteVarint<u8> for T {
         match size {
             1 => self.write_all(&[v])?,
             2 => {
-                self.write_all(&[241, (v - 240) as u8])?;
+                self.write_all(&[241, (v - 240)])?;
             }
             _ => unreachable!(),
         }
